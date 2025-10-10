@@ -4,5 +4,5 @@ function showEmail() {
     const emailDisplay = document.querySelector('#email-address-display');
     
     emailBtn.style.display = 'none';
-    emailDisplay.textContent = 'noahbboyd@gmail.com';
+  emailDisplay.textContent = 'contactme.nbz@gmail.com';
   }

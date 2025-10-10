@@ -18,11 +18,123 @@
     <script src="js/neonbutton.js"></script> 
 </head>
 <body>
-    <script>
-  window.addEventListener('load', function() {
-    alert("⚠️ Notice: This website is an archived project from my early web development work.\n\nThe following project is the 1st place winner of the 2024 Nextech Catapult Portfolio Competition. It is currently still active for demonstration and example purposes only, and should not be used solely as a reflection of my current work. For professional inquiries or an updated portfolio, please contact me via email or LinkedIn. Thanks!");
-  });
-</script>
+            <script>
+        // Show the archived-project notice after the intro video finishes (non-blocking modal).
+        // If a resolution-warning is visible, wait until it is closed so both don't overlap.
+        window.addEventListener('load', function() {
+            const msg = '⚠️ Notice: The following project is the 1st place winner of the 2024 Nextech Catapult Portfolio Competition. It is currently still active for demonstration and example purposes only, and should not be used as a reflection of my current work. In other words, this has been archived since its inception and will not be updated. For professional inquiries or an updated portfolio, please <a href="contact.html#contact">contact me</a> or visit my <a href="https://www.linkedin.com/in/noahbboyd" target="_blank" rel="noopener noreferrer">LinkedIn profile</a>. Thanks and enjoy!';
+
+            // Create and show a lightweight, non-blocking modal. Uses sessionStorage to
+            // avoid repeating during the same session.
+            const createModal = () => {
+                if (sessionStorage.getItem('nb_archived_shown')) return;
+                const modalId = 'nb-archived-modal';
+                if (document.getElementById(modalId)) return;
+
+                const wrapper = document.createElement('div');
+                wrapper.id = modalId;
+                wrapper.className = 'nb-archived-modal';
+                wrapper.innerHTML = `
+                    <div class="nb-archived-backdrop" role="dialog" aria-modal="true" aria-labelledby="nb-archived-title">
+                            <div class="nb-archived-panel">
+                            <button class="nb-archived-close" aria-label="Close">×</button>
+                            <h2 id="nb-archived-title">Archived project notice</h2>
+                            <div class="nb-archived-body">${msg}</div>
+                        </div>
+                    </div>
+                `;
+
+                // Minimal styles scoped to the modal so it won't interfere with existing styles
+                                const style = document.createElement('style');
+                                style.textContent = `
+                                    .nb-archived-backdrop { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:9999; }
+                                    .nb-archived-panel { background:#fff; color:#111; max-width:720px; width:90%; border-radius:10px; padding:20px 20px 16px 20px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-family: "Montserrat", sans-serif; position:relative; }
+                                    .nb-archived-panel h2 { margin:0 0 8px 0; font-size:1.05rem; }
+                                    .nb-archived-body { font-size:0.95rem; line-height:1.35; }
+                                    .nb-archived-body a { color: #0a66c2; text-decoration: underline; }
+                                    .nb-archived-body a:visited { color: #084a8a; }
+                                    .nb-archived-body a:hover, .nb-archived-body a:focus { color: #083a6a; outline: none; }
+                                    .nb-archived-close { position:absolute; right:12px; top:10px; background:transparent; border:0; font-size:1.4rem; cursor:pointer; color:#333; }
+                                    @media (prefers-reduced-motion: no-preference) { .nb-archived-panel { transform:translateY(8px); transition:transform .18s ease, opacity .18s ease; } }
+                                `;
+
+                document.body.appendChild(style);
+                document.body.appendChild(wrapper);
+
+                const close = () => {
+                    try { sessionStorage.setItem('nb_archived_shown', '1'); } catch (e) {}
+                    wrapper.remove();
+                    style.remove();
+                };
+
+                wrapper.querySelector('.nb-archived-close').addEventListener('click', close);
+                // Close when clicking backdrop (but not when clicking the panel)
+                wrapper.querySelector('.nb-archived-backdrop').addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget) close();
+                });
+
+                // Focus management: move focus to close button
+                const btn = wrapper.querySelector('.nb-archived-close');
+                if (btn) btn.focus();
+            };
+
+            // Decide when to show the modal: after video ends/timeout, or soon after load if no video.
+            const showNotice = () => {
+                // If the resolution-warning is visible, wait until it is closed to avoid overlap.
+                const res = document.querySelector('.resolution-warning');
+                const isVisible = (el) => !!(el && (el.offsetParent !== null || getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden'));
+
+                if (isVisible(res)) {
+                    // Listen for the close button on the resolution warning, then show modal
+                    const closeBtn = res.querySelector('.resolution-warning-close');
+                    if (closeBtn) {
+                        const handler = () => { setTimeout(createModal, 220); closeBtn.removeEventListener('click', handler); };
+                        closeBtn.addEventListener('click', handler);
+                        return;
+                    }
+                    // If no close button, try to observe attribute/style changes as a fallback
+                    const observer = new MutationObserver((mut) => {
+                        if (!isVisible(res)) { observer.disconnect(); createModal(); }
+                    });
+                    observer.observe(res, { attributes: true, attributeFilter: ['style', 'class'] });
+                    return;
+                }
+
+                // Otherwise, show immediately
+                createModal();
+            };
+
+            const video = document.querySelector('.background-image video') || document.querySelector('video');
+
+            if (!video) {
+                // No video: show notice shortly after load
+                setTimeout(showNotice, 900);
+                return;
+            }
+
+            const scheduleAfterDuration = () => {
+                if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
+                    setTimeout(showNotice, Math.ceil(video.duration * 1000) + 600);
+                    return true;
+                }
+                return false;
+            };
+
+            let fallbackTimer = null;
+            const startWaiting = () => {
+                if (scheduleAfterDuration()) return;
+                fallbackTimer = setTimeout(() => { showNotice(); }, 10000);
+                video.addEventListener('ended', () => { if (fallbackTimer) clearTimeout(fallbackTimer); showNotice(); }, { once: true });
+            };
+
+            if (video.readyState >= 1) {
+                startWaiting();
+            } else {
+                video.addEventListener('loadedmetadata', () => startWaiting(), { once: true });
+                setTimeout(() => { if (video.readyState < 1) startWaiting(); }, 2000);
+            }
+        });
+    </script>
     <div class="resolution-warning">
         <div class="resolution-warning-inner">
           <h2>Hi there!</h2>
